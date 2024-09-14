@@ -2,6 +2,7 @@ import calendar
 import datetime
 from itertools import chain
 from time import sleep
+from typing import Optional, Dict, Any, Union, List
 
 import requests
 import requests.compat
@@ -14,22 +15,42 @@ class StackAPIError(Exception):
 
     This utilizes the values returned by the API and described
     here: http://api.stackexchange.com/docs/types/error
-
-    :param url: (string) The URL that was called and generated an error
-    :param error: (int) The `error_id` returned by the API (should be an int)
-    :param code: (string) The `description` returned by the API and is human friendly
-    :param message: (string) The `error_name` returned by the API
     """
 
-    def __init__(self, url, error, code, message):
+    def __init__(self, url:str, error:int, code:str, message:str) -> None:
+        """
+        Initializes StackAPIError with specific error details
+
+        :param url: (string) The URL that was called and generated an error
+        :param error: (int) The `error_id` returned by the API (should be an int)
+        :param code: (string) The `description` returned by the API and is human friendly
+        :param message: (string) The `error_name` returned by the API
+        """
         self.url = url
         self.error = error
         self.code = code
         self.message = message
+    
+    def __str__(self) -> str:
+        """
+        Returns a string representation of the error
+
+        :return: String in the format '[Error <error_id>]: <error_name> - <description>'
+        """
+        return f"[Error {self.error}]: {self.message} - {self.code}"
 
 
 class StackAPI(object):
-    def __init__(self, name=None, version="2.3", base_url="https://api.stackexchange.com", **kwargs):
+    """
+    A client class used to interact with the Stack Exchange API.
+
+    This class provides methods for fetching and sending data to the API and handles
+    pagination, access tokens, and filters. It supports making requests to various endpoints
+    provided by the Stack Exchange API (e.g., questions, answers, badges) and managing
+    responses including API quota and pagination information
+    """
+
+    def __init__(self, name: Optional[str] =None, version: str ="2.3", base_url: str ="https://api.stackexchange.com", **kwargs: Any) -> None:
         """
         The object used to interact with the Stack Exchange API
 
@@ -58,19 +79,19 @@ class StackAPI(object):
             a user, to grant more permissions (such as write access)
         """
 
-        self.proxy = kwargs.get("proxy", None)
-        self.max_pages = kwargs.get("max_pages", 5)
-        self.page_size = kwargs.get("page_size", 100)
-        self.key = kwargs.get("key", None)
-        self.access_token = kwargs.get("access_token", None)
-        self._endpoint = None
-        self._api_key = None
-        self._name = None
-        self._version = version
-        self._previous_call = None
+        self.proxy: Optional[Dict[str, str]] = kwargs.get("proxy", None)
+        self.max_pages: int = kwargs.get("max_pages", 5)
+        self.page_size: int = kwargs.get("page_size", 100)
+        self.key: Optional[str] = kwargs.get("key", None)
+        self.access_token: Optional[str] = kwargs.get("access_token", None)
+        self._endpoint: Optional[str] = None
+        self._api_key: Optional[str] = None
+        self._name: Optional[str] = None
+        self._version: str = version
+        self._previous_call: Optional[Dict[str, Any]] = None
 
-        self._base_url = "{}/{}/".format(base_url, version)
-        sites = self.fetch("sites", filter="!*L1*AY-85YllAr2)", pagesize=1000)
+        self._base_url: str = "{}/{}/".format(base_url, version)
+        sites: Dict[str, Any] = self.fetch("sites", filter="!*L1*AY-85YllAr2)", pagesize=1000)
         for s in sites["items"]:
             if name == s["api_site_parameter"]:
                 self._name = s["name"]
@@ -88,7 +109,7 @@ class StackAPI(object):
             self._name, self._version, self._endpoint, self._previous_call
         )
 
-    def fetch(self, endpoint=None, page=1, key=None, filter="default", **kwargs):
+    def fetch(self, endpoint: Optional[str] = None, page: int = 1, key: Optional[str] =None, filter: str ="default", **kwargs: Any) -> Dict[str, Union[List[Any], Dict[str, Any]]]:
         """Returns the results of an API call.
 
         This is the main work horse of the class. It builds the API query
@@ -136,7 +157,7 @@ class StackAPI(object):
 
         self._endpoint = endpoint
 
-        params = {"pagesize": self.page_size, "page": page, "filter": filter}
+        params: Dict[str, Union[str, int]] = {"pagesize": self.page_size, "page": page, "filter": filter}
 
         if self.key:
             params["key"] = self.key
@@ -185,7 +206,7 @@ class StackAPI(object):
         if self._api_key:
             params["site"] = self._api_key
 
-        data = []
+        data: List[Dict[str, Any]] = []
         run_cnt = 1
         backoff = 0
         total = 0
@@ -235,11 +256,12 @@ class StackAPI(object):
             else:
                 break
 
-        r = []
+        r: List[Any] = []
         for d in data:
             if "items" in d:
                 r.extend(d["items"])
-        result = {
+
+        result: Dict[str, Union[List[Any], Dict[str, Any]]] = {
             "backoff": backoff,
             "has_more": False if "has_more" not in data[-1] else data[-1]["has_more"],
             "page": params["page"],
@@ -251,7 +273,7 @@ class StackAPI(object):
 
         return result
 
-    def send_data(self, endpoint=None, page=1, key=None, filter="default", **kwargs):
+    def send_data(self, endpoint: Optional[str]=None, page: int =1, key: Optional[str] =None, filter: str ="default", **kwargs: Any) -> Dict[str, Union[List[Any], Dict[str, Any]]]:
         """Sends data to the API.
 
         This call is similar to ``fetch``, but **sends** data to the API instead
@@ -299,7 +321,7 @@ class StackAPI(object):
 
         self._endpoint = endpoint
 
-        params = {"pagesize": self.page_size, "page": page, "filter": filter}
+        params: Dict[str, Union[str, int]] = {"pagesize": self.page_size, "page": page, "filter": filter}
 
         if self.key:
             params["key"] = self.key
@@ -316,7 +338,7 @@ class StackAPI(object):
         if self._api_key:
             params["site"] = self._api_key
 
-        data = []
+        data: List[Dict[str, Any]] = []
 
         base_url = "{}{}/".format(self._base_url, endpoint)
         response = requests.post(base_url, data=params, proxies=self.proxy)
@@ -332,10 +354,10 @@ class StackAPI(object):
             pass  # This means there is no error
 
         data.append(response)
-        r = []
+        r: List[Any] = []
         for d in data:
             r.extend(d["items"])
-        result = {
+        result: Dict[str, Union[List[Any], Dict[str, Any]]] = {
             "has_more": data[-1]["has_more"],
             "page": params["page"],
             "quota_max": data[-1]["quota_max"],
