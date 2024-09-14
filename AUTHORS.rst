@@ -11,6 +11,7 @@ Patches and Suggestions
 
 `@ArtOfCode- <https://github.com/ArtOfCode->`_
 `@bgrnwdvg - <https://github.com/bgrnwdvg>`_
+`@aqib-abdullahi - <https://github.com/aqib-abdullahi>`
 
 
 :ref:`Contribute <contributing>` a feature and get your name here!
